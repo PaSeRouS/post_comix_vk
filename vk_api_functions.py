@@ -1,24 +1,26 @@
 import requests
 
-def get_wall_upload_url(vk_token, version):
+
+def get_wall_upload_url(vk_token, vk_group, version):
     url = "https://api.vk.com/method/photos.getWallUploadServer"
 
     params = {
-        'group_id': '212629556',
+        'group_id': vk_group,
         'access_token': vk_token,
         'v': version,
     }
 
     response = requests.get(url, params=params)
     response.raise_for_status()
+    is_error(response)
 
     wall_upload_data = response.json()
     return wall_upload_data['response']['upload_url']
 
 
-def upload_picture_to_vk(filename, vk_token, version):
+def upload_picture_to_vk(filename, vk_token, vk_group, version):
     with open(filename, 'rb') as picture:
-        wall_upload_url = get_wall_upload_url(vk_token, version)
+        wall_upload_url = get_wall_upload_url(vk_token, vk_group,  version)
 
         wall_files = {
             'photo': picture
@@ -26,42 +28,43 @@ def upload_picture_to_vk(filename, vk_token, version):
 
         response = requests.post(wall_upload_url, files=wall_files)
         response.raise_for_status()
+        is_error(response)
 
     return response.json()
 
 
-def save_picture(upload_data, vk_token, version):
+def save_picture(server, photo, photo_hash, vk_token, vk_group, version):
     url = "https://api.vk.com/method/photos.saveWallPhoto"
 
     params = {
-        'server': upload_data['server'],
-        'photo': upload_data['photo'],
-        'hash': upload_data['hash'],
-        'group_id': '212629556',
+        'server': server,
+        'photo': photo,
+        'hash': photo_hash,
+        'group_id': vk_group,
         'access_token': vk_token,
         'v': version,
     }
 
     response = requests.get(url, params=params)
     response.raise_for_status()
+    is_error(response)
 
     return response.json()
 
 
-def post_picture_to_vk(filename, vk_token, version, alt_text):
-    upload_data = upload_picture_to_vk(filename, vk_token, version)
-    save_data = save_picture(upload_data, vk_token, version)
-    post_on_wall(save_data, vk_token, version, alt_text)
+def post_picture_to_vk(filename, vk_token, vk_group, version, alt_text):
+    upload_data = upload_picture_to_vk(filename, vk_token, vk_group, version)
+    save_data = save_picture(upload_data['server'], upload_data['photo'],
+        upload_data['hash'], vk_token, vk_group, version)
+    post_on_wall(save_data['response'][0]['owner_id'],
+        save_data['response'][0]['id'], vk_token, vk_group, version, alt_text)
 
 
-def post_on_wall(save_data, vk_token, version, alt_text):
+def post_on_wall(owner_id, photo_id, vk_token, vk_group, version, alt_text):
     url = "https://api.vk.com/method/wall.post"
 
-    owner_id = save_data['response'][0]['owner_id']
-    photo_id = save_data['response'][0]['id']
-
     params = {
-        'owner_id': '-212629556',
+        'owner_id': f'-{vk_group}',
         'from_group': 0,
         'attachments': f'photo{owner_id}_{photo_id}',
         'message': alt_text,
@@ -71,3 +74,10 @@ def post_on_wall(save_data, vk_token, version, alt_text):
 
     response = requests.get(url, params=params)
     response.raise_for_status()
+    is_error(response)
+
+
+def is_error(response):
+    decoded_response = response.json()
+    if 'error' in decoded_response:
+        raise requests.exceptions.HTTPError(decoded_response['error'])
