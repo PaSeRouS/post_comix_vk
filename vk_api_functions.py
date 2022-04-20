@@ -13,7 +13,7 @@ def get_wall_upload_url(vk_token, vk_group, version):
     response = requests.get(url, params=params)
     response.raise_for_status()
 
-    wall_upload_data = error_checking(response)
+    wall_upload_data = check_for_error(response)
 
     return wall_upload_data['response']['upload_url']
 
@@ -29,7 +29,7 @@ def upload_picture_to_vk(filename, vk_token, vk_group, version):
         response = requests.post(wall_upload_url, files=wall_files)
         response.raise_for_status()
 
-    return error_checking(response)
+    return check_for_error(response)
 
 
 def save_picture(server, photo, photo_hash, vk_token, vk_group, version):
@@ -47,7 +47,7 @@ def save_picture(server, photo, photo_hash, vk_token, vk_group, version):
     response = requests.get(url, params=params)
     response.raise_for_status()
 
-    return error_checking(response)
+    return check_for_error(response)
 
 
 def post_picture_to_vk(filename, vk_token, vk_group, version, alt_text):
@@ -86,10 +86,10 @@ def post_on_wall(owner_id, photo_id, vk_token, vk_group, version, alt_text):
     response = requests.get(url, params=params)
     response.raise_for_status()
 
-    error_checking(response)
+    check_for_error(response)
 
 
-def error_checking(response):
+def check_for_error(response):
     decoded_response = response.json()
     if 'error' in decoded_response:
         raise requests.exceptions.HTTPError(decoded_response['error'])
